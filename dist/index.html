@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#20164a" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="ELEMENTAIS" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="description" content="Aventure matemática 3D para crianças do 3º ano." />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <title>Aventura das ELEMENTAIS</title>
+    <script type="module" crossorigin src="/assets/index-D93zGIon.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-bmGdwnAI.css">
+  </head>
+  <body>
+    <div id="game"></div>
+    <div class="game-version" aria-label="Versão atual do jogo">ALPHA 1.15</div>
+
+    <section id="start-screen" class="overlay open">
+      <div class="start-card">
+        <div class="brand-mark">E</div>
+        <p class="eyebrow">UMA JORNADA DE DESCOBERTAS</p>
+        <h1 class="game-title">Aventura das <span>ELEMENTAIS</span></h1>
+        <p class="intro">Explore mundos, supere desafios escolares e abra as portas de cada sala misteriosa.</p>
+        <button id="start-button" class="primary-button">Começar aventura <b>→</b></button>
+        <div class="how-to">
+          <span>◉ Mova a Elemental pelo controle esquerdo</span>
+          <span>☝ Arraste o lado direito para girar a câmera</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="subject-screen" class="overlay subject-screen">
+      <div class="subject-card">
+        <button id="subject-ranking-button" class="subject-ranking-button" aria-label="Abrir ranking">🏆 Ranking</button>
+        <p class="eyebrow purple">ESCOLHA UMA MATÉRIA</p>
+        <h2>Qual mundo vamos explorar?</h2>
+        <p class="subject-intro">Cada matéria tem 5 níveis com 5 desafios.</p>
+        <div class="player-login">
+          <label for="player-name">NOME OU APELIDO DO JOGADOR</label>
+          <div><input id="player-name" maxlength="24" autocomplete="nickname" placeholder="Digite nome ou apelido" /><button id="player-login-button" type="button">Entrar</button></div>
+          <p id="player-login-message">Digite seu primeiro nome ou apelido para começar.</p>
+        </div>
+        <div id="subject-list" class="subject-list">
+          <button data-subject="math"><b>＋</b><span>Matemática<small>Contas e problemas</small></span></button>
+          <button data-subject="portuguese"><b>Ab</b><span>Português<small>Leitura e palavras</small></span></button>
+          <button data-subject="science"><b>♧</b><span>Ciências<small>Plantas e solo</small></span></button>
+          <button data-subject="history"><b>⌂</b><span>História e Geografia<small>Campo e cidade</small></span></button>
+          <button data-subject="english"><b>Aa</b><span>Inglês<small>Words and colors</small></span></button>
+          <button data-subject="mix"><b>✦</b><span>Modo MIX<small>Todas as matérias misturadas</small></span></button>
+        </div>
+      </div>
+    </section>
+
+    <header id="hud" class="hidden">
+      <div class="hud-left">
+        <div class="level-pill"><small>NÍVEL</small><strong id="level-value">1</strong></div>
+        <div id="hud-player" class="hud-player">Jogador</div>
+      </div>
+      <div class="room-progress">
+        <span id="subject-label">Matemática</span>
+        <b id="room-label">Pergunta 1 de 5</b>
+        <div id="room-dots" class="room-dots"></div>
+      </div>
+      <div class="hud-actions">
+        <button id="notebook-button" class="round-button notebook-button" aria-label="Abrir caderno">📒</button>
+        <button id="ranking-button" class="round-button" aria-label="Abrir ranking">🏆</button>
+        <button id="sound-button" class="round-button" aria-label="Ativar ou desativar som">♪</button>
+      </div>
+    </header>
+
+    <aside id="guide" class="guide hidden">
+      <div id="lia-face" class="lia-face"></div>
+      <p id="guide-text">Encontre o painel ao lado da porta!</p>
+    </aside>
+
+    <div id="crosshair" class="hidden">+</div>
+    <button id="interact-button" class="interact-button hidden">✦ Resolver problema</button>
+
+    <div id="touch-controls" class="hidden">
+      <div id="joystick-zone" class="joystick-zone"><div id="joystick-knob" class="joystick-knob"></div></div>
+      <div id="look-zone" class="look-zone"><span>GIRE A CÂMERA</span></div>
+      <div class="mobile-action-buttons">
+        <button id="slow-step-button" class="slow-step-button" type="button">Passinhos</button>
+        <button id="run-button" class="run-button" type="button">Correr</button>
+        <button id="jump-button" class="jump-button" type="button">Pular</button>
+      </div>
+    </div>
+
+    <section id="notebook-modal" class="notebook-overlay" aria-hidden="true" aria-modal="true" role="dialog" aria-labelledby="notebook-title">
+      <div class="notebook-shell">
+        <header class="notebook-header">
+          <div class="notebook-title-wrap"><span>📒</span><div><small>MEU CADERNO</small><h2 id="notebook-title">Matemática</h2></div></div>
+          <span id="notebook-save-status" class="notebook-save-status">Salvo ✓</span>
+          <button id="notebook-close" class="notebook-close" type="button" aria-label="Fechar caderno">×</button>
+        </header>
+        <div class="notebook-toolbar" role="toolbar" aria-label="Ferramentas do caderno">
+          <div class="notebook-tools">
+            <button type="button" data-notebook-tool="pencil" class="selected" aria-label="Lápis">✏️ <span>Lápis</span></button>
+            <button type="button" data-notebook-tool="pen" aria-label="Caneta">🖊️ <span>Caneta</span></button>
+            <button type="button" data-notebook-tool="eraser" aria-label="Borracha">▱ <span>Borracha</span></button>
+          </div>
+          <label class="notebook-thickness">Espessura <input id="notebook-width" type="range" min="1" max="14" value="4" /></label>
+          <div class="notebook-history">
+            <button id="notebook-undo" type="button" aria-label="Desfazer">↶</button>
+            <button id="notebook-redo" type="button" aria-label="Refazer">↷</button>
+          </div>
+        </div>
+        <div id="notebook-paper" class="notebook-paper">
+          <canvas id="notebook-canvas" aria-label="Folha para escrever e desenhar"></canvas>
+        </div>
+        <footer class="notebook-pages">
+          <button id="notebook-prev" type="button" aria-label="Página anterior">‹</button>
+          <strong id="notebook-page-label">Página 1 de 1</strong>
+          <button id="notebook-next" type="button" aria-label="Próxima página">›</button>
+          <button id="notebook-new-page" class="notebook-new-page" type="button">＋ Nova página</button>
+          <button id="notebook-delete-page" class="notebook-delete-page" type="button" aria-label="Apagar página atual">🗑</button>
+        </footer>
+      </div>
+    </section>
+
+    <section id="math-modal" class="overlay" aria-modal="true" role="dialog">
+      <div class="math-card">
+        <button id="close-math" class="close-button" aria-label="Fechar">×</button>
+        <p class="eyebrow purple">PAINEL DA PORTA</p>
+        <h2>Qual é a resposta?</h2>
+        <div id="operation-hint" class="operation-hint">SOMA +</div>
+        <div id="question" class="question">8 + 7 = ?</div>
+        <div id="answers" class="answers"></div>
+        <form id="typed-answer" class="typed-answer hidden">
+          <label for="answer-input">Digite sua resposta</label>
+          <div><input id="answer-input" inputmode="numeric" autocomplete="off" placeholder="Sua resposta" /><button type="submit">Confirmar</button></div>
+        </form>
+        <div class="tries"><span>Tentativas</span><div id="hearts">♥ ♥ ♥</div></div>
+        <p id="feedback" class="feedback">Escolha uma resposta.</p>
+      </div>
+    </section>
+
+    <section id="level-modal" class="overlay">
+      <div class="level-card">
+        <div class="stars">★ ★ ★</div>
+        <p id="completion-eyebrow" class="eyebrow">NÍVEL CONCLUÍDO</p>
+        <h2 id="completion-title">Muito bem!</h2>
+        <p id="completion-text">Você respondeu 5 perguntas e chegou ao</p>
+        <strong id="new-level">Nível 2</strong>
+        <button id="continue-button" class="primary-button">Continuar explorando →</button>
+      </div>
+    </section>
+
+    <section id="ranking-modal" class="overlay" aria-modal="true" role="dialog">
+      <div class="ranking-card">
+        <button id="close-ranking" class="close-button" aria-label="Fechar">×</button>
+        <p class="eyebrow purple">AVENTURA DAS ELEMENTAIS</p>
+        <h2>🏆 Ranking</h2>
+        <p class="ranking-intro">Quem chegou mais longe na aventura?</p>
+        <div id="ranking-list" class="ranking-list"><p class="ranking-status">Carregando ranking…</p></div>
+      </div>
+    </section>
+
+    <div id="room-transition" class="room-transition"><span>Entrando na próxima sala…</span></div>
+
+  </body>
+</html>

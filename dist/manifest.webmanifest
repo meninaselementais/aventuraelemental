@@ -1,0 +1,11 @@
+{
+  "name": "Aventura das ELEMENTAIS",
+  "short_name": "ELEMENTAIS",
+  "description": "Aventura matemática 3D para crianças do 3º ano.",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#18142e",
+  "theme_color": "#20164a",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
