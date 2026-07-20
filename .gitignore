@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.vite/
+*.log
+.DS_Store
+*.zip
+.tools/
+.codex/
+.codex-remote-attachments/
