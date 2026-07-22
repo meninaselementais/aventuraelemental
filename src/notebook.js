@@ -70,13 +70,19 @@ function page() {
 
 function canvasMetrics() {
   const rect = elements.canvas.getBoundingClientRect();
-  return { width: Math.max(1, rect.width), height: Math.max(1, rect.height) };
+  return {
+    width: Math.max(1, rect.width),
+    height: Math.max(1, rect.height),
+    pixelWidth: Math.max(1, elements.canvas.width),
+    pixelHeight: Math.max(1, elements.canvas.height),
+    lineScale: Math.max(1, Math.min(elements.canvas.width / Math.max(1, rect.width), elements.canvas.height / Math.max(1, rect.height)))
+  };
 }
 
-function applyStrokeStyle(stroke) {
+function applyStrokeStyle(stroke, lineScale = 1) {
   context.lineCap = 'round';
   context.lineJoin = 'round';
-  context.lineWidth = stroke.tool === 'eraser' ? stroke.width * 3.25 : stroke.tool === 'pencil' ? stroke.width * .88 : stroke.width;
+  context.lineWidth = (stroke.tool === 'eraser' ? stroke.width * 3.25 : stroke.tool === 'pencil' ? stroke.width * .88 : stroke.width) * lineScale;
   context.globalAlpha = stroke.tool === 'pencil' ? .7 : 1;
   context.strokeStyle = stroke.tool === 'pen' ? '#2454af' : '#424854';
   context.globalCompositeOperation = stroke.tool === 'eraser' ? 'destination-out' : 'source-over';
@@ -84,21 +90,21 @@ function applyStrokeStyle(stroke) {
 
 function drawStroke(stroke) {
   if (!stroke?.points?.length) return;
-  const { width, height } = canvasMetrics();
-  applyStrokeStyle(stroke);
+  const { pixelWidth, pixelHeight, lineScale } = canvasMetrics();
+  applyStrokeStyle(stroke, lineScale);
   const first = stroke.points[0];
   context.beginPath();
-  context.moveTo(first.x * width, first.y * height);
+  context.moveTo(first.x * pixelWidth, first.y * pixelHeight);
   if (stroke.points.length === 1) {
-    context.lineTo(first.x * width + .01, first.y * height + .01);
+    context.lineTo(first.x * pixelWidth + .01, first.y * pixelHeight + .01);
   } else {
     for (let index = 1; index < stroke.points.length - 1; index++) {
       const point = stroke.points[index];
       const next = stroke.points[index + 1];
-      context.quadraticCurveTo(point.x * width, point.y * height, (point.x + next.x) * width / 2, (point.y + next.y) * height / 2);
+      context.quadraticCurveTo(point.x * pixelWidth, point.y * pixelHeight, (point.x + next.x) * pixelWidth / 2, (point.y + next.y) * pixelHeight / 2);
     }
     const last = stroke.points.at(-1);
-    context.lineTo(last.x * width, last.y * height);
+    context.lineTo(last.x * pixelWidth, last.y * pixelHeight);
   }
   context.stroke();
   context.globalCompositeOperation = 'source-over';
@@ -109,8 +115,8 @@ function redraw() {
   if (!elements || !context || !notebookData) return;
   cancelAnimationFrame(drawFrame);
   drawFrame = requestAnimationFrame(() => {
-    const { width, height } = canvasMetrics();
-    context.clearRect(0, 0, width, height);
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.clearRect(0, 0, elements.canvas.width, elements.canvas.height);
     for (const stroke of page().strokes) drawStroke(stroke);
     if (activeStroke) drawStroke(activeStroke);
   });
@@ -126,7 +132,7 @@ function resizeCanvas() {
   if (elements.canvas.width !== pixelWidth || elements.canvas.height !== pixelHeight) {
     elements.canvas.width = pixelWidth;
     elements.canvas.height = pixelHeight;
-    context.setTransform(ratio, 0, 0, ratio, 0, 0);
+    context.setTransform(1, 0, 0, 1, 0, 0);
     redraw();
   }
 }
@@ -142,9 +148,12 @@ function updatePageUI() {
 
 function pointFromEvent(event) {
   const rect = elements.canvas.getBoundingClientRect();
+  const directTarget = event.currentTarget === elements.canvas && Number.isFinite(event.offsetX) && Number.isFinite(event.offsetY);
+  const x = directTarget ? event.offsetX / Math.max(1, elements.canvas.clientWidth) : (event.clientX - rect.left) / Math.max(1, rect.width);
+  const y = directTarget ? event.offsetY / Math.max(1, elements.canvas.clientHeight) : (event.clientY - rect.top) / Math.max(1, rect.height);
   return {
-    x: Math.max(0, Math.min(1, (event.clientX - rect.left) / Math.max(1, rect.width))),
-    y: Math.max(0, Math.min(1, (event.clientY - rect.top) / Math.max(1, rect.height)))
+    x: Math.max(0, Math.min(1, x)),
+    y: Math.max(0, Math.min(1, y))
   };
 }
 
