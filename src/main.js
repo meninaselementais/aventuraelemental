@@ -2,10 +2,10 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import './style.css?v=alpha-1.17';
+import './style.css?v=alpha-1.18';
 import { SUBJECTS, getQuestion, normalizeAnswer } from './questions.js';
 import { initCaderno, abrirCaderno } from './notebook.js';
-import { GAME_RELEASE } from './updates.js?v=alpha-1.17';
+import { GAME_RELEASE } from './updates.js?v=alpha-1.18';
 
 const $ = (selector) => document.querySelector(selector);
 const ui = {
@@ -32,6 +32,7 @@ let scene, camera, renderer, clock;
 let doorGroup, doorPivot, panelGroup, doorGlow, characterGroup;
 let initialRoomTemplate = null, initialRoomLoading = null, activeRoomModel = null;
 let initialRockTexture = null;
+let woodTexture = null;
 let initialRoomBlockers = [];
 let leftArm, rightArm, leftLeg, rightLeg, walkTime = 0;
 let elementalTemplate = null, elementalLoading = false, elementalLoadFailed = false;
@@ -145,6 +146,40 @@ function getInitialRockTexture() {
   initialRockTexture.repeat.set(5, 2);
   initialRockTexture.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
   return initialRockTexture;
+}
+
+function getWoodTexture() {
+  if (woodTexture) return woodTexture;
+  const size = 256;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const context = canvas.getContext('2d');
+  context.fillStyle = '#6a2f17';
+  context.fillRect(0, 0, size, size);
+  for (let x = 0; x <= size; x += 64) {
+    context.strokeStyle = 'rgba(35, 12, 5, .55)';
+    context.lineWidth = 5;
+    context.beginPath(); context.moveTo(x, 0); context.lineTo(x + 8, size); context.stroke();
+    context.strokeStyle = 'rgba(177, 84, 35, .28)';
+    context.lineWidth = 2;
+    context.beginPath(); context.moveTo(x + 9, 0); context.lineTo(x - 3, size); context.stroke();
+  }
+  for (let y = 8; y < size; y += 19) {
+    context.strokeStyle = 'rgba(222, 117, 48, .18)';
+    context.lineWidth = 1.5;
+    context.beginPath();
+    for (let x = 0; x <= size; x += 16) {
+      const yy = y + Math.sin(x * .065 + y * .12) * 3;
+      if (x === 0) context.moveTo(x, yy); else context.lineTo(x, yy);
+    }
+    context.stroke();
+  }
+  woodTexture = new THREE.CanvasTexture(canvas);
+  woodTexture.colorSpace = THREE.SRGBColorSpace;
+  woodTexture.wrapS = woodTexture.wrapT = THREE.RepeatWrapping;
+  woodTexture.repeat.set(1.2, 1.6);
+  woodTexture.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
+  return woodTexture;
 }
 
 function addBox(name, size, position, material, parent = scene) {
@@ -279,7 +314,8 @@ function addInitialRoomFinish(model) {
     emissive: 0x1f0b06,
     emissiveIntensity: .48
   });
-  const oldWood = new THREE.MeshStandardMaterial({ color: 0x3a1b0e, roughness: .9 });
+  const wood = getWoodTexture();
+  const oldWood = new THREE.MeshStandardMaterial({ map: wood, bumpMap: wood, bumpScale: .22, color: 0xffffff, roughness: .88, metalness: 0, emissive: 0x140603, emissiveIntensity: .22 });
   const iron = new THREE.MeshStandardMaterial({ color: 0x211d1b, roughness: .55, metalness: .68 });
 
   // Cobertura e paredes contínuas atrás das rochas fecham todas as emendas
@@ -779,8 +815,9 @@ function addLights() {
 function createDoor(side, accentColor) {
   doorGroup = new THREE.Group();
   panelGroup = new THREE.Group();
-  const doorMat = new THREE.MeshPhysicalMaterial({ color: 0x3c3152, roughness: .28, metalness: .35, clearcoat: .75, clearcoatRoughness: .18 });
-  const insetMat = new THREE.MeshPhysicalMaterial({ color: 0x211a33, roughness: .38, metalness: .45, clearcoat: .5 });
+  const wood = getWoodTexture();
+  const doorMat = new THREE.MeshPhysicalMaterial({ map: wood, bumpMap: wood, bumpScale: .2, color: 0xffffff, roughness: .72, metalness: .12, clearcoat: .35, clearcoatRoughness: .2 });
+  const insetMat = new THREE.MeshPhysicalMaterial({ map: wood, bumpMap: wood, bumpScale: .16, color: 0xb56b3e, roughness: .78, metalness: .08, clearcoat: .24 });
   const frameMat = new THREE.MeshStandardMaterial({ color: 0x181321, roughness: .35, metalness: .7 });
   const metalMat = new THREE.MeshStandardMaterial({ color: 0xd99835, roughness: .22, metalness: .9, emissive: 0x5d2d08, emissiveIntensity: .25 });
   const panelMat = new THREE.MeshStandardMaterial({ color: accentColor, roughness: .2, metalness: .12, emissive: accentColor, emissiveIntensity: 1.1, side: THREE.DoubleSide });
