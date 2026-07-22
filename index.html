@@ -15,7 +15,7 @@
   </head>
   <body>
     <div id="game"></div>
-    <div class="game-version" aria-label="Versão atual do jogo">ALPHA 1.15</div>
+    <div id="game-version" class="game-version" aria-label="Versão atual do jogo">ALPHA 1.17</div>
 
     <section id="start-screen" class="overlay open">
       <div class="start-card">
@@ -37,6 +37,11 @@
         <p class="eyebrow purple">ESCOLHA UMA MATÉRIA</p>
         <h2>Qual mundo vamos explorar?</h2>
         <p class="subject-intro">Cada matéria tem 5 níveis com 5 desafios.</p>
+        <button id="updates-book-button" class="updates-book-button" type="button" aria-haspopup="dialog">
+          <span class="updates-book-icon" aria-hidden="true">📖</span>
+          <span><strong>Updates</strong><small id="updates-book-summary">Veja as novidades da versão atual</small></span>
+          <b aria-hidden="true">›</b>
+        </button>
         <div class="player-login">
           <label for="player-name">NOME OU APELIDO DO JOGADOR</label>
           <div><input id="player-name" maxlength="24" autocomplete="nickname" placeholder="Digite nome ou apelido" /><button id="player-login-button" type="button">Entrar</button></div>
@@ -51,6 +56,20 @@
           <button data-subject="mix"><b>✦</b><span>Modo MIX<small>Todas as matérias misturadas</small></span></button>
         </div>
       </div>
+    </section>
+
+    <section id="updates-modal" class="overlay updates-overlay" aria-hidden="true" aria-modal="true" role="dialog" aria-labelledby="updates-title">
+      <article class="updates-book">
+        <div class="updates-book-spine" aria-hidden="true"></div>
+        <div class="updates-page">
+          <p class="updates-kicker">NOVIDADES DO JOGO</p>
+          <h2 id="updates-title">Updates</h2>
+          <div class="updates-release-line"><strong id="updates-version">ALPHA 1.17</strong><span id="updates-date"></span></div>
+          <p class="updates-intro">Olha só o que preparamos nesta versão:</p>
+          <div id="updates-list" class="updates-list"></div>
+          <button id="updates-continue" class="primary-button" type="button">Continuar para as matérias →</button>
+        </div>
+      </article>
     </section>
 
     <header id="hud" class="hidden">
@@ -83,7 +102,7 @@
       <div id="look-zone" class="look-zone"><span>GIRE A CÂMERA</span></div>
       <div class="mobile-action-buttons">
         <button id="slow-step-button" class="slow-step-button" type="button">Passinhos</button>
-        <button id="run-button" class="run-button" type="button">Correr</button>
+        <button id="run-button" class="run-button" type="button" aria-pressed="false">Correr</button>
         <button id="jump-button" class="jump-button" type="button">Pular</button>
       </div>
     </div>
@@ -160,6 +179,6 @@
 
     <div id="room-transition" class="room-transition"><span>Entrando na próxima sala…</span></div>
 
-    <script type="module" src="/src/main.js"></script>
+    <script type="module" src="/src/main.js?v=alpha-1.17"></script>
   </body>
 </html>
