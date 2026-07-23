@@ -1,4 +1,4 @@
-const CACHE = 'aventura-elementais-v28';
+const CACHE = 'aventura-elementais-v29';
 
 self.addEventListener('install', event => event.waitUntil((async () => {
   const cache = await caches.open(CACHE);
