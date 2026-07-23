@@ -145,7 +145,8 @@ function multiplayerApi() {
             Object.assign(player, {
               name: String(message.name || 'Jogador').slice(0, 24), room: Number(message.room) || 1,
               x: Number(message.x) || 0, y: Number(message.y) || 0, z: Number(message.z) || 0,
-              rotation: Number(message.rotation) || 0
+              rotation: Number(message.rotation) || 0,
+              character: String(message.character || 'fogo')
             });
             broadcast();
           } catch { /* pacote inválido */ }
