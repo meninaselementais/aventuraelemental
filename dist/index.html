@@ -12,8 +12,8 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
     <title>Aventura das ELEMENTAIS</title>
-    <script type="module" crossorigin src="/assets/index-DeuamwGL.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-j9-y5v3a.css">
+    <script type="module" crossorigin src="/assets/index-B2mMDotI.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-BmC5g1Sg.css">
   </head>
   <body>
     <div id="game"></div>
@@ -48,17 +48,19 @@
           <label>ESCOLHA SUA PERSONAGEM</label>
           <div class="character-select-list" id="character-select-list">
             <button type="button" class="character-option selected" data-character="fogo">
-              <span class="character-icon">🔥</span>
+              <div class="character-3d-wrapper">
+                <canvas class="character-3d-canvas" id="canvas-preview-fogo"></canvas>
+              </div>
               <div class="character-info">
-                <strong>Menina de Fogo</strong>
-                <small>Chamas & Velocidade</small>
+                <strong>Menina do Cabelo de Fogo</strong>
               </div>
             </button>
             <button type="button" class="character-option" data-character="terra">
-              <span class="character-icon">🌿</span>
+              <div class="character-3d-wrapper">
+                <canvas class="character-3d-canvas" id="canvas-preview-terra"></canvas>
+              </div>
               <div class="character-info">
-                <strong>Menina de Terra</strong>
-                <small>Cabelos de Planta & Força</small>
+                <strong>Menina do Cabelo de Terra</strong>
               </div>
             </button>
           </div>

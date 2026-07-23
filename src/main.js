@@ -1695,10 +1695,73 @@ addEventListener('orientationchange', () => setTimeout(() => {
   renderer.setSize(innerWidth, innerHeight);
 }, 120));
 
-document.addEventListener('pointerdown', unlockAudio, { once: true, capture: true });
-document.addEventListener('touchend', unlockAudio, { once: true, capture: true, passive: true });
+function createCharacter3DPreview(canvasId, fbxUrl) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
 
-renderUpdates(); restorePlayer(); init3D(); setupControls(); updateHUD();
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(40, 110 / 120, 0.1, 100);
+  camera.position.set(0, 1.1, 3.2);
+  camera.lookAt(0, 0.95, 0);
+
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+  renderer.setSize(110, 120, false);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+  const ambientLight = new THREE.AmbientLight(0xffffff, 1.8);
+  scene.add(ambientLight);
+
+  const dirLight = new THREE.DirectionalLight(0xffffff, 2.2);
+  dirLight.position.set(2, 4, 3);
+  scene.add(dirLight);
+
+  const backLight = new THREE.DirectionalLight(0xffffff, 0.8);
+  backLight.position.set(-2, 2, -3);
+  scene.add(backLight);
+
+  const modelGroup = new THREE.Group();
+  scene.add(modelGroup);
+
+  let mixer = null;
+
+  new FBXLoader().load(fbxUrl, (fbx) => {
+    const prepared = prepareElementalModel(fbx);
+    prepared.rotation.y = 0;
+    modelGroup.add(prepared);
+
+    if (fbx.animations && fbx.animations.length > 0) {
+      mixer = new THREE.AnimationMixer(prepared);
+      const action = mixer.clipAction(fbx.animations[0]);
+      action.play();
+    }
+  }, undefined, (err) => console.warn('Erro ao carregar preview 3D:', err));
+
+  const clock = new THREE.Clock();
+
+  function animate() {
+    requestAnimationFrame(animate);
+    const dt = clock.getDelta();
+
+    if (modelGroup) {
+      modelGroup.rotation.y += 0.015;
+    }
+
+    if (mixer) {
+      mixer.update(dt);
+    }
+
+    renderer.render(scene, camera);
+  }
+
+  animate();
+}
+
+function initCharacter3DPreviews() {
+  createCharacter3DPreview('canvas-preview-fogo', '/assets/elemental-walking.fbx');
+  createCharacter3DPreview('canvas-preview-terra', '/assets/terra/terra-walking.fbx');
+}
+
+renderUpdates(); restorePlayer(); init3D(); setupControls(); updateHUD(); initCharacter3DPreviews();
 
 async function syncServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
