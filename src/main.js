@@ -98,11 +98,10 @@ function init3D() {
   camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, .1, 60);
   camera.rotation.order = 'YXZ';
   renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-  const mobileGraphics = matchMedia('(pointer: coarse)').matches || /iPhone|iPad|iPod/i.test(navigator.userAgent);
-  renderer.setPixelRatio(Math.min(devicePixelRatio, mobileGraphics ? 1.35 : 1.7));
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.35));
   renderer.setSize(innerWidth, innerHeight);
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   $('#game').appendChild(renderer.domElement);
   clock = new THREE.Clock();
@@ -1741,17 +1740,13 @@ function createCharacter3DPreview(canvasId, fbxUrl) {
 
   function animate() {
     requestAnimationFrame(animate);
-    const dt = clock.getDelta();
-
-    if (modelGroup) {
-      modelGroup.rotation.y += 0.015;
+    // Só renderiza os mini previews 3D se a tela inicial ou de seleção de matérias estiver aberta
+    if (!started || (ui.subjectScreen && ui.subjectScreen.classList.contains('open')) || (ui.start && ui.start.classList.contains('open'))) {
+      const dt = clock.getDelta();
+      if (modelGroup) modelGroup.rotation.y += 0.015;
+      if (mixer) mixer.update(dt);
+      renderer.render(scene, camera);
     }
-
-    if (mixer) {
-      mixer.update(dt);
-    }
-
-    renderer.render(scene, camera);
   }
 
   animate();

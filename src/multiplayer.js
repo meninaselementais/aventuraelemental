@@ -192,9 +192,10 @@ export function initMultiplayer(scene, onStatus = () => {}) {
 export function updateMultiplayer(player, playerName, roomNumber, rotation, now = performance.now(), dt = 0, character = 'fogo') {
   const currentRoom = Number(roomNumber) || 1;
   for (const remote of remotePlayers.values()) {
-    remote.object.visible = (Number(remote.room) || 1) === currentRoom;
-    if (remote.mixer) {
-      remote.mixer.timeScale = remote.moving ? 1 : 0;
+    const isSameRoom = (Number(remote.room) || 1) === currentRoom;
+    remote.object.visible = isSameRoom;
+    if (isSameRoom && remote.mixer && remote.moving) {
+      remote.mixer.timeScale = 1;
       remote.mixer.update(dt);
     }
   }
