@@ -216,12 +216,12 @@ h2 { font-size: 38px; }
 .character-select-section { margin: 12px 0 16px; text-align: left; }
 .character-select-section label { display: block; margin-bottom: 8px; color: #604297; font-size: 10px; font-weight: 900; letter-spacing: .15em; text-align: center; }
 .character-select-list { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.character-option { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px 8px; border: 2px solid #e1d6f2; border-radius: 20px; color: #2c1a4d; background: #ffffff; cursor: pointer; transition: all .25s ease; text-align: center; }
+.character-option { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px 8px; border: 2px solid #e1d6f2; border-radius: 20px; color: #2c1a4d; background: #ffffff; cursor: pointer; transition: all .25s ease; text-align: center; }
 .character-option:hover { border-color: #aa86e3; background: #f9f5ff; transform: translateY(-2px); }
 .character-option.selected { border-color: #ff6d37; background: #fff5ef; box-shadow: 0 6px 18px rgba(255, 109, 55, 0.3); }
 .character-option[data-character="terra"].selected { border-color: #4caf50; background: #f1f8e9; box-shadow: 0 6px 18px rgba(76, 175, 80, 0.3); }
-.character-3d-wrapper { position: relative; width: 110px; height: 120px; margin-bottom: 8px; border-radius: 16px; background: radial-gradient(circle, #f3ecff 0%, #e6d8ff 100%); overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.character-3d-wrapper { position: relative; width: 100%; max-width: 120px; height: 125px; margin-bottom: 8px; border-radius: 16px; background: radial-gradient(circle, #f3ecff 0%, #e6d8ff 100%); overflow: hidden; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 2px 6px rgba(0,0,0,0.06); }
 .character-option[data-character="fogo"] .character-3d-wrapper { background: radial-gradient(circle, #fff0f0 0%, #ffd6d6 100%); }
 .character-option[data-character="terra"] .character-3d-wrapper { background: radial-gradient(circle, #f2faf2 0%, #c8e6c9 100%); }
-.character-3d-canvas { width: 100%; height: 100%; display: block; }
+.character-3d-canvas { width: 100%; height: 100%; display: block; background: transparent; }
 .character-info strong { display: block; font-size: 13px; font-weight: 900; line-height: 1.2; color: #20164a; text-align: center; }

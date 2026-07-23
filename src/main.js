@@ -1705,6 +1705,7 @@ function createCharacter3DPreview(canvasId, fbxUrl) {
   camera.lookAt(0, 0.95, 0);
 
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+  renderer.setClearColor(0x000000, 0);
   renderer.setSize(110, 120, false);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
@@ -1767,17 +1768,20 @@ async function syncServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
 
   try {
-    if (!import.meta.env.PROD) {
+    const savedRelease = localStorage.getItem('elementais-release-ver');
+    if (savedRelease !== GAME_RELEASE.version) {
+      localStorage.setItem('elementais-release-ver', GAME_RELEASE.version);
       const registrations = await navigator.serviceWorker.getRegistrations();
       await Promise.all(registrations.map(registration => registration.unregister()));
 
       if ('caches' in window) {
         const cacheNames = await caches.keys();
-        await Promise.all(cacheNames
-          .filter(name => name.startsWith('aventura-elementais-'))
-          .map(name => caches.delete(name)));
+        await Promise.all(cacheNames.map(name => caches.delete(name)));
       }
-      return;
+      if (savedRelease) {
+        window.location.reload(true);
+        return;
+      }
     }
 
     const registration = await navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' });
