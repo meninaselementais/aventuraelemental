@@ -87,10 +87,15 @@ function upgradeAvatars() {
   }
 }
 
+function normalizeCharacter(char) {
+  return char === 'terra' ? 'terra' : 'fogo';
+}
+
 function createRemoteAvatar(player) {
   const group = new THREE.Group();
   group.name = `remote-player-${player.id}`;
-  const record = { ...player, object: group, lastX: player.x, lastZ: player.z, moving: false };
+  const character = normalizeCharacter(player.character);
+  const record = { ...player, character, room: Number(player.room) || 1, object: group, lastX: player.x, lastZ: player.z, moving: false };
   addAvatarVisual(group, record);
   group.userData.nameLabel = createNameLabel(player.name);
   group.add(group.userData.nameLabel);
@@ -112,34 +117,36 @@ function removeRemoteAvatar(id) {
 }
 
 function applySnapshot(players, snapshotSelfId = '') {
-  // O ID do welcome identifica esta conexão. Não substituímos por um
-  // snapshot atrasado de outra conexão através do proxy/túnel.
   if (!localId && snapshotSelfId) localId = snapshotSelfId;
   const seen = new Set();
   for (const player of players) {
     if (player.id === localId) continue;
     seen.add(player.id);
+    const char = normalizeCharacter(player.character);
+    const room = Number(player.room) || 1;
     const remote = remotePlayers.get(player.id);
-    const target = remote || createRemoteAvatar(player);
-    target.moving = Math.hypot(player.x - (target.lastX ?? player.x), player.z - (target.lastZ ?? player.z)) > .012;
-    target.lastX = player.x; target.lastZ = player.z;
+    const target = remote || createRemoteAvatar({ ...player, character: char, room });
+    
+    const distSq = (player.x - target.object.position.x) ** 2 + (player.z - target.object.position.z) ** 2;
+    target.moving = distSq > 0.0004;
     target.object.position.set(player.x, player.y, player.z);
     target.object.rotation.y = player.rotation || 0;
+    target.room = room;
+
     if (target.name !== player.name) {
+      target.name = player.name;
       target.object.remove(target.object.userData.nameLabel);
-      target.object.userData.nameLabel?.material.map?.dispose();
-      target.object.userData.nameLabel?.material.dispose();
+      target.object.userData.nameLabel?.material?.map?.dispose();
+      target.object.userData.nameLabel?.material?.dispose();
       target.object.userData.nameLabel = createNameLabel(player.name);
       target.object.add(target.object.userData.nameLabel);
     }
-    if (target.character !== player.character) {
-      target.character = player.character;
+    if (target.character !== char) {
+      target.character = char;
       target.object.clear();
       addAvatarVisual(target.object, target);
       target.object.add(target.object.userData.nameLabel);
     }
-    Object.assign(target, player);
-    remotePlayers.set(player.id, target);
   }
   for (const id of remotePlayers.keys()) if (!seen.has(id)) removeRemoteAvatar(id);
 }
@@ -183,8 +190,9 @@ export function initMultiplayer(scene, onStatus = () => {}) {
 }
 
 export function updateMultiplayer(player, playerName, roomNumber, rotation, now = performance.now(), dt = 0, character = 'fogo') {
+  const currentRoom = Number(roomNumber) || 1;
   for (const remote of remotePlayers.values()) {
-    remote.object.visible = (Number(remote.room) || 1) === (Number(roomNumber) || 1);
+    remote.object.visible = (Number(remote.room) || 1) === currentRoom;
     if (remote.mixer) {
       remote.mixer.timeScale = remote.moving ? 1 : 0;
       remote.mixer.update(dt);
@@ -193,7 +201,7 @@ export function updateMultiplayer(player, playerName, roomNumber, rotation, now 
   if (!connected || !socket || socket.readyState !== WebSocket.OPEN || now - lastSentAt < 50) return;
   lastSentAt = now;
   socket.send(JSON.stringify({
-    type: 'state', name: playerName || 'Jogador', room: roomNumber,
+    type: 'state', name: playerName || 'Jogador', room: currentRoom,
     x: player.position.x, y: player.position.y, z: player.position.z, rotation,
     character: character || 'fogo'
   }));

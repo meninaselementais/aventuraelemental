@@ -1367,11 +1367,9 @@ function updateCharacterAnimation(dt, moving, speed = 0) {
 }
 
 function updateMovement(dt) {
-  // O servidor precisa saber que o jogador está presente mesmo na tela de
-  // matérias, durante uma transição ou enquanto um modal está aberto.
-  updateMultiplayer(player, playerName, roomNumber, characterGroup?.rotation?.y || 0, performance.now(), dt, selectedCharacter);
   updateJump(dt);
   if (!started || modalOpen || changingRoom) {
+    updateMultiplayer(player, playerName, roomNumber, characterGroup?.rotation?.y || 0, performance.now(), dt, selectedCharacter);
     velocity.multiplyScalar(Math.exp(-10 * dt));
     updateCharacterAnimation(dt, scriptedWalk, scriptedWalk ? 2.2 : 0);
     relaxWalk(dt); updateCamera(); return;
