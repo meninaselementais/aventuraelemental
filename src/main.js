@@ -2,11 +2,11 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import './style.css?v=alpha-1.19';
+import './style.css?v=alpha-1.20';
 import { SUBJECTS, getQuestion, normalizeAnswer } from './questions.js';
 import { initCaderno, abrirCaderno } from './notebook.js';
 import { initMultiplayer, updateMultiplayer } from './multiplayer.js';
-import { GAME_RELEASE } from './updates.js?v=alpha-1.19';
+import { GAME_RELEASE } from './updates.js?v=alpha-1.20';
 
 const $ = (selector) => document.querySelector(selector);
 const ui = {

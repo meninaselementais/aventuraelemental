@@ -1,6 +1,6 @@
 # 🧩 Documentação Técnica — Aventura das ELEMENTAIS
 
-> Versão: ALPHA 1.15 | Three.js 0.178 | Vite 7 | Plataforma: Web (PWA)
+> Versão: ALPHA 1.20 | Three.js 0.178 | Vite 7 | Plataforma: Web (PWA)
 
 ---
 
