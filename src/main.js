@@ -498,10 +498,7 @@ function addThemeDetails(theme) {
   }
 }
 
-const terraTexture = new THREE.TextureLoader().load('/assets/terra/terra.png');
-terraTexture.colorSpace = THREE.SRGBColorSpace;
-
-function prepareElementalModel(model, isTerra = false) {
+function prepareElementalModel(model) {
   model.rotation.y = Math.PI;
   model.updateMatrixWorld(true);
 
@@ -517,13 +514,6 @@ function prepareElementalModel(model, isTerra = false) {
   model.position.z -= center.z;
   model.traverse((part) => {
     if (!part.isMesh) return;
-    if (isTerra) {
-      part.material = new THREE.MeshStandardMaterial({
-        map: terraTexture,
-        roughness: .68,
-        metalness: .08
-      });
-    }
     part.castShadow = true;
     part.receiveShadow = true;
     part.frustumCulled = true;
@@ -650,8 +640,10 @@ function createElemental() {
           loadFbxClip('/assets/terra/terra-fast-run.fbx')
         ]).then(([idleClip, jumpClip, runClip]) => {
           const normalClip = (fbx.animations ?? [])[0] ?? null;
-          elementalAnimations = [normalClip, normalClip, idleClip, jumpClip, runClip].map((clip) => clip ? makeAnimationInPlace(clip) : null);
-          elementalTemplate = prepareElementalModel(fbx, true);
+          const slowClip = normalClip ? normalClip.clone() : null;
+          if (slowClip) slowClip.name = 'terra_slow_walk';
+          elementalAnimations = [normalClip, slowClip, idleClip, jumpClip, runClip].map((clip) => clip ? makeAnimationInPlace(clip) : null);
+          elementalTemplate = prepareElementalModel(fbx);
           elementalLoading = false;
           attachElementalModel(characterGroup);
         });
@@ -1705,7 +1697,7 @@ addEventListener('orientationchange', () => setTimeout(() => {
   renderer.setSize(innerWidth, innerHeight);
 }, 120));
 
-function createCharacter3DPreview(canvasId, fbxUrl, isTerra = false) {
+function createCharacter3DPreview(canvasId, fbxUrl) {
   const canvas = document.getElementById(canvasId);
   if (!canvas) return;
 
@@ -1736,7 +1728,7 @@ function createCharacter3DPreview(canvasId, fbxUrl, isTerra = false) {
   let mixer = null;
 
   new FBXLoader().load(fbxUrl, (fbx) => {
-    const prepared = prepareElementalModel(fbx, isTerra);
+    const prepared = prepareElementalModel(fbx);
     prepared.rotation.y = 0;
     modelGroup.add(prepared);
 
@@ -1768,8 +1760,8 @@ function createCharacter3DPreview(canvasId, fbxUrl, isTerra = false) {
 }
 
 function initCharacter3DPreviews() {
-  createCharacter3DPreview('canvas-preview-fogo', '/assets/elemental-walking.fbx', false);
-  createCharacter3DPreview('canvas-preview-terra', '/assets/terra/terra-walking.fbx', true);
+  createCharacter3DPreview('canvas-preview-fogo', '/assets/elemental-walking.fbx');
+  createCharacter3DPreview('canvas-preview-terra', '/assets/terra/terra-walking.fbx');
 }
 
 renderUpdates(); restorePlayer(); init3D(); setupControls(); updateHUD(); initCharacter3DPreviews();

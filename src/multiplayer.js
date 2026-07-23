@@ -54,7 +54,6 @@ function addAvatarVisual(group, record = null) {
 
   if (template) {
     const model = SkeletonUtils.clone(template);
-    if (key === 'terra') applyTerraMaterials(model);
     normalizeAvatar(model);
     if (record && clip) {
       record.mixer = new THREE.AnimationMixer(model);
@@ -145,23 +144,6 @@ function applySnapshot(players, snapshotSelfId = '') {
   for (const id of remotePlayers.keys()) if (!seen.has(id)) removeRemoteAvatar(id);
 }
 
-const terraTexture = new THREE.TextureLoader().load('/assets/terra/terra.png');
-terraTexture.colorSpace = THREE.SRGBColorSpace;
-
-function applyTerraMaterials(model) {
-  model.traverse(part => {
-    if (part.isMesh) {
-      part.material = new THREE.MeshStandardMaterial({
-        map: terraTexture,
-        roughness: .68,
-        metalness: .08
-      });
-      part.castShadow = true;
-      part.receiveShadow = true;
-    }
-  });
-}
-
 export function initMultiplayer(scene, onStatus = () => {}) {
   sceneRef = scene;
   const fbxLoader = new FBXLoader();
@@ -171,7 +153,6 @@ export function initMultiplayer(scene, onStatus = () => {}) {
     upgradeAvatars();
   });
   fbxLoader.load('/assets/terra/terra-walking.fbx', fbx => {
-    applyTerraMaterials(fbx);
     avatarTemplates.terra = fbx;
     walkClips.terra = fbx.animations?.[0] || null;
     upgradeAvatars();
