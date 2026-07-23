@@ -1,15 +1,17 @@
 {
   "name": "aventura-das-elementais",
   "private": true,
-  "version": "1.0.0-alpha.15",
+  "version": "1.0.0-alpha.19",
   "type": "module",
   "scripts": {
-    "dev": "vite --host 0.0.0.0",
+    "dev": "vite --host :: --port 5174",
+    "multiplayer": "node multiplayer-server.mjs",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
-    "three": "^0.178.0"
+    "three": "^0.178.0",
+    "ws": "^8.21.1"
   },
   "devDependencies": {
     "vite": "^7.0.4"

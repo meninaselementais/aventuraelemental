@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 
 const rankingFile = path.resolve('data', 'ranking.json');
 const validSubjects = new Set(['math', 'portuguese', 'science', 'history', 'english', 'mix']);
@@ -111,8 +112,53 @@ function rankingApi() {
   };
 }
 
+function multiplayerApi() {
+  const players = new Map();
+  const broadcast = () => {
+    const snapshot = [...players.values()].map(({ socket, ...publicPlayer }) => publicPlayer);
+    for (const client of players.values()) {
+      if (client.socket.readyState === 1) {
+        client.socket.send(JSON.stringify({ type: 'snapshot', selfId: client.id, players: snapshot }));
+      }
+    }
+  };
+  return {
+    name: 'elementais-multiplayer',
+    configureServer(server) {
+      import('ws').then(({ WebSocketServer }) => {
+        const wss = new WebSocketServer({ noServer: true });
+        server.httpServer?.on('upgrade', (request, socket, head) => {
+          const pathname = new URL(request.url, 'http://localhost').pathname;
+          if (pathname !== '/multiplayer') return;
+          wss.handleUpgrade(request, socket, head, client => wss.emit('connection', client, request));
+        });
+        wss.on('connection', socket => {
+        const id = randomUUID();
+        const player = { id, socket, name: 'Jogador', room: 1, x: 0, y: 0, z: 2.2, rotation: 0 };
+        players.set(id, player);
+        socket.send(JSON.stringify({ type: 'welcome', id }));
+        broadcast();
+        socket.on('message', raw => {
+          try {
+            const message = JSON.parse(raw);
+            if (message.type !== 'state') return;
+            Object.assign(player, {
+              name: String(message.name || 'Jogador').slice(0, 24), room: Number(message.room) || 1,
+              x: Number(message.x) || 0, y: Number(message.y) || 0, z: Number(message.z) || 0,
+              rotation: Number(message.rotation) || 0
+            });
+            broadcast();
+          } catch { /* pacote inválido */ }
+        });
+        socket.on('close', () => { players.delete(id); broadcast(); });
+        });
+      });
+    }
+  };
+}
+
 export default defineConfig({
-  plugins: [rankingApi()],
+  plugins: [rankingApi(), multiplayerApi()],
   server: {
     host: '0.0.0.0',
     allowedHosts: ['.trycloudflare.com', '.meninaselementais.com.br']

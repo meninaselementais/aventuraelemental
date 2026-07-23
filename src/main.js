@@ -2,9 +2,11 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import './style.css';
+import './style.css?v=alpha-1.19';
 import { SUBJECTS, getQuestion, normalizeAnswer } from './questions.js';
 import { initCaderno, abrirCaderno } from './notebook.js';
+import { initMultiplayer, updateMultiplayer } from './multiplayer.js';
+import { GAME_RELEASE } from './updates.js?v=alpha-1.19';
 
 const $ = (selector) => document.querySelector(selector);
 const ui = {
@@ -21,12 +23,17 @@ const ui = {
   playerName: $('#player-name'), playerLogin: $('#player-login-button'), playerMessage: $('#player-login-message'),
   hudPlayer: $('#hud-player'), rankingButton: $('#ranking-button'), subjectRankingButton: $('#subject-ranking-button'),
   rankingModal: $('#ranking-modal'), rankingList: $('#ranking-list'), closeRanking: $('#close-ranking'),
-  jump: $('#jump-button'), slowStep: $('#slow-step-button'), run: $('#run-button'), notebook: $('#notebook-button')
+  jump: $('#jump-button'), slowStep: $('#slow-step-button'), run: $('#run-button'), notebook: $('#notebook-button'),
+  gameVersion: $('#game-version'), updatesBook: $('#updates-book-button'), updatesBookSummary: $('#updates-book-summary'),
+  updatesModal: $('#updates-modal'), updatesVersion: $('#updates-version'), updatesDate: $('#updates-date'),
+  updatesList: $('#updates-list'), updatesContinue: $('#updates-continue')
 };
 
 let scene, camera, renderer, clock;
 let doorGroup, doorPivot, panelGroup, doorGlow, characterGroup;
 let initialRoomTemplate = null, initialRoomLoading = null, activeRoomModel = null;
+let initialRockTexture = null;
+let woodTexture = null;
 let initialRoomBlockers = [];
 let leftArm, rightArm, leftLeg, rightLeg, walkTime = 0;
 let elementalTemplate = null, elementalLoading = false, elementalLoadFailed = false;
@@ -50,8 +57,6 @@ const CHARACTER_GROUND_Y = .09;
 let yaw = 0, pitch = 0;
 const keys = {};
 const MOVEMENT_KEYS = ['KeyW', 'ArrowUp', 'KeyS', 'ArrowDown', 'KeyA', 'ArrowLeft', 'KeyD', 'ArrowRight'];
-let lastDirectionalKeySignal = 0;
-const STUCK_KEY_TIMEOUT = 900;
 let joystickPointerId = null;
 const moveInput = { x: 0, y: 0 };
 const velocity = new THREE.Vector2();
@@ -60,7 +65,7 @@ const wrongChoices = new Set();
 const debugMode = import.meta.env.DEV && new URLSearchParams(location.search).has('debug');
 const PLAYER_STORAGE_KEY = 'elementais-player-name';
 const player = { position: new THREE.Vector3(0, 0, 2.2), radius: .42 };
-const INITIAL_ROOM_URL = '/assets/sala-inicial.glb?v=6';
+const INITIAL_ROOM_URL = '/assets/sala-inicial.glb?v=7';
 const INITIAL_RAIL_DROP = .23;
 const THEMES = [
   { name: 'Corredores Dourados', wall: 0xcfc5a0, floor: 0x756b55, ceiling: 0xe7dfc9, accent: 0xf0a849, fog: 0x8b7a58, light: 0xffe5a1, kind: 'classic' },
@@ -101,6 +106,7 @@ function init3D() {
   $('#game').appendChild(renderer.domElement);
   clock = new THREE.Clock();
   buildRoom();
+  initMultiplayer(scene, status => { document.body.dataset.multiplayer = status; });
   addLights();
   updateCamera();
   animate();
@@ -108,6 +114,74 @@ function init3D() {
 
 function mat(color, roughness = .8, emissive = 0x000000) {
   return new THREE.MeshStandardMaterial({ color, roughness, emissive, emissiveIntensity: emissive ? .45 : 0 });
+}
+
+function getInitialRockTexture() {
+  if (initialRockTexture) return initialRockTexture;
+  const size = 192;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const context = canvas.getContext('2d');
+  const pixels = context.createImageData(size, size);
+  let seed = 0x1a16c0de;
+  const random = () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const index = (y * size + x) * 4;
+      const broad = Math.sin(x * .105 + Math.sin(y * .04) * 2.4) * 10;
+      const grain = (random() - .5) * 24;
+      const crack = Math.abs(Math.sin(x * .035 + y * .072 + Math.sin(y * .021) * 2.8)) > .985 ? -28 : 0;
+      const light = broad + grain + crack;
+      pixels.data[index] = THREE.MathUtils.clamp(69 + light, 24, 105);
+      pixels.data[index + 1] = THREE.MathUtils.clamp(43 + light * .62, 17, 76);
+      pixels.data[index + 2] = THREE.MathUtils.clamp(28 + light * .38, 10, 53);
+      pixels.data[index + 3] = 255;
+    }
+  }
+  context.putImageData(pixels, 0, 0);
+  initialRockTexture = new THREE.CanvasTexture(canvas);
+  initialRockTexture.colorSpace = THREE.SRGBColorSpace;
+  initialRockTexture.wrapS = initialRockTexture.wrapT = THREE.RepeatWrapping;
+  initialRockTexture.repeat.set(5, 2);
+  initialRockTexture.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
+  return initialRockTexture;
+}
+
+function getWoodTexture() {
+  if (woodTexture) return woodTexture;
+  const size = 256;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const context = canvas.getContext('2d');
+  context.fillStyle = '#6a2f17';
+  context.fillRect(0, 0, size, size);
+  for (let x = 0; x <= size; x += 64) {
+    context.strokeStyle = 'rgba(35, 12, 5, .55)';
+    context.lineWidth = 5;
+    context.beginPath(); context.moveTo(x, 0); context.lineTo(x + 8, size); context.stroke();
+    context.strokeStyle = 'rgba(177, 84, 35, .28)';
+    context.lineWidth = 2;
+    context.beginPath(); context.moveTo(x + 9, 0); context.lineTo(x - 3, size); context.stroke();
+  }
+  for (let y = 8; y < size; y += 19) {
+    context.strokeStyle = 'rgba(222, 117, 48, .18)';
+    context.lineWidth = 1.5;
+    context.beginPath();
+    for (let x = 0; x <= size; x += 16) {
+      const yy = y + Math.sin(x * .065 + y * .12) * 3;
+      if (x === 0) context.moveTo(x, yy); else context.lineTo(x, yy);
+    }
+    context.stroke();
+  }
+  woodTexture = new THREE.CanvasTexture(canvas);
+  woodTexture.colorSpace = THREE.SRGBColorSpace;
+  woodTexture.wrapS = woodTexture.wrapT = THREE.RepeatWrapping;
+  woodTexture.repeat.set(1.2, 1.6);
+  woodTexture.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
+  return woodTexture;
 }
 
 function addBox(name, size, position, material, parent = scene) {
@@ -221,9 +295,29 @@ function configureInitialRoom(model) {
 }
 
 function addInitialRoomFinish(model) {
-  const rock = new THREE.MeshStandardMaterial({ color: 0x2b180f, roughness: 1, metalness: 0, emissive: 0x120704, emissiveIntensity: .28 });
-  const deepRock = new THREE.MeshStandardMaterial({ color: 0x170d09, roughness: 1, metalness: 0, emissive: 0x0d0503, emissiveIntensity: .3 });
-  const oldWood = new THREE.MeshStandardMaterial({ color: 0x3a1b0e, roughness: .9 });
+  const rockTexture = getInitialRockTexture();
+  const rock = new THREE.MeshStandardMaterial({
+    map: rockTexture,
+    bumpMap: rockTexture,
+    bumpScale: .48,
+    color: 0xf0c69f,
+    roughness: 1,
+    metalness: 0,
+    emissive: 0x2d1209,
+    emissiveIntensity: .52
+  });
+  const deepRock = new THREE.MeshStandardMaterial({
+    map: rockTexture,
+    bumpMap: rockTexture,
+    bumpScale: .62,
+    color: 0x9b6d50,
+    roughness: 1,
+    metalness: 0,
+    emissive: 0x1f0b06,
+    emissiveIntensity: .48
+  });
+  const wood = getWoodTexture();
+  const oldWood = new THREE.MeshStandardMaterial({ map: wood, bumpMap: wood, bumpScale: .22, color: 0xffffff, roughness: .88, metalness: 0, emissive: 0x140603, emissiveIntensity: .22 });
   const iron = new THREE.MeshStandardMaterial({ color: 0x211d1b, roughness: .55, metalness: .68 });
 
   // Cobertura e paredes contínuas atrás das rochas fecham todas as emendas
@@ -723,9 +817,23 @@ function addLights() {
 function createDoor(side, accentColor) {
   doorGroup = new THREE.Group();
   panelGroup = new THREE.Group();
-  const doorMat = new THREE.MeshPhysicalMaterial({ color: 0x3c3152, roughness: .28, metalness: .35, clearcoat: .75, clearcoatRoughness: .18 });
-  const insetMat = new THREE.MeshPhysicalMaterial({ color: 0x211a33, roughness: .38, metalness: .45, clearcoat: .5 });
+  const wood = getWoodTexture();
+  const doorMat = new THREE.MeshPhysicalMaterial({ map: wood, bumpMap: wood, bumpScale: .2, color: 0xffffff, roughness: .72, metalness: .12, clearcoat: .35, clearcoatRoughness: .2 });
+  const insetMat = new THREE.MeshPhysicalMaterial({ map: wood, bumpMap: wood, bumpScale: .16, color: 0xb56b3e, roughness: .78, metalness: .08, clearcoat: .24 });
   const frameMat = new THREE.MeshStandardMaterial({ color: 0x181321, roughness: .35, metalness: .7 });
+  // Fecha o recorte escuro acima da porta com a mesma rocha texturizada da mina.
+  // O painel acompanha a rotação da porta, inclusive nas paredes laterais.
+  const lintelRock = getInitialRockTexture();
+  const lintelMat = new THREE.MeshStandardMaterial({
+    map: lintelRock,
+    bumpMap: lintelRock,
+    bumpScale: .42,
+    color: 0xc18a62,
+    roughness: .96,
+    metalness: 0,
+    emissive: 0x160804,
+    emissiveIntensity: .32
+  });
   const metalMat = new THREE.MeshStandardMaterial({ color: 0xd99835, roughness: .22, metalness: .9, emissive: 0x5d2d08, emissiveIntensity: .25 });
   const panelMat = new THREE.MeshStandardMaterial({ color: accentColor, roughness: .2, metalness: .12, emissive: accentColor, emissiveIntensity: 1.1, side: THREE.DoubleSide });
   const isNorth = side === 0;
@@ -752,6 +860,7 @@ function createDoor(side, accentColor) {
   addBox('frameTop', [2.35, .22, .35], [0, 1.44, 0], frameMat, doorGroup);
   addBox('frameL', [.22, 2.95, .35], [-1.07, 0, 0], frameMat, doorGroup);
   addBox('frameR', [.22, 2.95, .35], [1.07, 0, 0], frameMat, doorGroup);
+  addBox('doorAboveTexturedRock', [2.42, 1.72, .22], [0, 3.05, .04], lintelMat, doorGroup);
   const crown = new THREE.Mesh(new THREE.TorusGeometry(1.07, .09, 7, 24, Math.PI), metalMat);
   crown.position.y = 1.36; crown.rotation.z = Math.PI; doorGroup.add(crown);
   scene.add(doorGroup);
@@ -813,6 +922,33 @@ function restorePlayer() {
 
 function escapeHTML(value) {
   return String(value).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
+}
+
+function renderUpdates() {
+  ui.gameVersion.textContent = GAME_RELEASE.version;
+  ui.updatesVersion.textContent = GAME_RELEASE.version;
+  ui.updatesDate.textContent = GAME_RELEASE.date;
+  ui.updatesBookSummary.textContent = `${GAME_RELEASE.version} · ${GAME_RELEASE.changes.length} novidades`;
+  ui.updatesList.innerHTML = GAME_RELEASE.changes.map(change => `
+    <div class="update-note">
+      <span class="update-note-icon" aria-hidden="true">${escapeHTML(change.icon)}</span>
+      <div><strong>${escapeHTML(change.title)}</strong><p>${escapeHTML(change.description)}</p></div>
+    </div>
+  `).join('');
+}
+
+function openUpdates() {
+  modalOpen = true;
+  stopMovement();
+  ui.updatesModal.classList.add('open');
+  ui.updatesModal.setAttribute('aria-hidden', 'false');
+  requestAnimationFrame(() => ui.updatesContinue.focus());
+}
+
+function closeUpdates() {
+  ui.updatesModal.classList.remove('open');
+  ui.updatesModal.setAttribute('aria-hidden', 'true');
+  modalOpen = ui.subjectScreen.classList.contains('open') || ui.levelModal.classList.contains('open') || ui.rankingModal.classList.contains('open');
 }
 
 function renderRanking(entries) {
@@ -1200,15 +1336,14 @@ function updateCharacterAnimation(dt, moving, speed = 0) {
 }
 
 function updateMovement(dt) {
+  // O servidor precisa saber que o jogador está presente mesmo na tela de
+  // matérias, durante uma transição ou enquanto um modal está aberto.
+  updateMultiplayer(player, playerName, roomNumber, characterGroup?.rotation?.y || 0, performance.now(), dt);
   updateJump(dt);
   if (!started || modalOpen || changingRoom) {
     velocity.multiplyScalar(Math.exp(-10 * dt));
     updateCharacterAnimation(dt, scriptedWalk, scriptedWalk ? 2.2 : 0);
     relaxWalk(dt); updateCamera(); return;
-  }
-  if (MOVEMENT_KEYS.some(code => keys[code]) && performance.now() - lastDirectionalKeySignal > STUCK_KEY_TIMEOUT) {
-    MOVEMENT_KEYS.forEach(code => { keys[code] = false; });
-    velocity.set(0, 0);
   }
   if (joystickPointerId !== null && !ui.joystick.hasPointerCapture(joystickPointerId)) {
     joystickPointerId = null;
@@ -1264,6 +1399,7 @@ function updateMovement(dt) {
     if (!walkingAction) characterGroup.position.y = player.position.y + CHARACTER_GROUND_Y + Math.abs(Math.sin(walkTime * 2)) * .025;
   } else relaxWalk(dt);
   updateCharacterAnimation(dt, moving, velocity.length());
+  updateMultiplayer(player, playerName, roomNumber, characterGroup.rotation.y);
   updateCamera();
   const doorPlanar = Math.hypot(player.position.x - doorGroup.position.x, player.position.z - doorGroup.position.z);
   const panelPlanar = Math.hypot(player.position.x - panelGroup.position.x, player.position.z - panelGroup.position.z);
@@ -1309,7 +1445,10 @@ function stopMovement() {
   moveInput.x = 0; moveInput.y = 0; velocity.set(0, 0);
   if (ui.knob) ui.knob.style.transform = 'translate(-50%,-50%)';
   if (ui.slowStep) ui.slowStep.classList.remove('held');
-  if (ui.run) ui.run.classList.remove('held');
+  if (ui.run) {
+    ui.run.classList.remove('held');
+    ui.run.setAttribute('aria-pressed', 'false');
+  }
 }
 
 function animate() {
@@ -1323,7 +1462,6 @@ function setupControls() {
   addEventListener('keydown', e => {
     keys[e.code] = true;
     if (started && subjectChosen && (MOVEMENT_KEYS.includes(e.code) || /^Control|^Shift/.test(e.code))) e.preventDefault();
-    if (MOVEMENT_KEYS.includes(e.code)) lastDirectionalKeySignal = performance.now();
     if (e.code === 'Space' && started && subjectChosen && !modalOpen && !changingRoom) {
       e.preventDefault();
       if (!e.repeat) triggerJump();
@@ -1336,7 +1474,6 @@ function setupControls() {
   addEventListener('keyup', e => {
     keys[e.code] = false;
     if (MOVEMENT_KEYS.includes(e.code)) {
-      lastDirectionalKeySignal = performance.now();
       if (!MOVEMENT_KEYS.some(code => keys[code]) && Math.hypot(moveInput.x, moveInput.y) < .02) velocity.set(0, 0);
     }
   });
@@ -1390,24 +1527,16 @@ function setupControls() {
   ui.slowStep.addEventListener('pointerup', endSlowSteps);
   ui.slowStep.addEventListener('pointercancel', endSlowSteps);
   ui.slowStep.addEventListener('lostpointercapture', endSlowSteps);
-  const startRunning = event => {
+  const toggleRunning = event => {
     event.preventDefault(); event.stopPropagation();
     if (!started || modalOpen || changingRoom) return;
+    mobileRunMode = !mobileRunMode;
     mobileSlowMode = false;
     ui.slowStep.classList.remove('held');
-    mobileRunMode = true;
-    ui.run.classList.add('held');
-    ui.run.setPointerCapture(event.pointerId);
+    ui.run.classList.toggle('held', mobileRunMode);
+    ui.run.setAttribute('aria-pressed', String(mobileRunMode));
   };
-  const endRunning = event => {
-    if (event) event.stopPropagation();
-    mobileRunMode = false;
-    ui.run.classList.remove('held');
-  };
-  ui.run.addEventListener('pointerdown', startRunning);
-  ui.run.addEventListener('pointerup', endRunning);
-  ui.run.addEventListener('pointercancel', endRunning);
-  ui.run.addEventListener('lostpointercapture', endRunning);
+  ui.run.addEventListener('pointerdown', toggleRunning);
   let lookId = null, lastX=0, lastY=0;
   ui.lookZone.addEventListener('pointerdown', e => { lookId=e.pointerId; lastX=e.clientX; lastY=e.clientY; ui.lookZone.setPointerCapture(lookId); });
   ui.lookZone.addEventListener('pointermove', e => { if(e.pointerId!==lookId) return; yaw -= (e.clientX-lastX)*.006; pitch -= (e.clientY-lastY)*.004; pitch=THREE.MathUtils.clamp(pitch,-.55,.65); lastX=e.clientX; lastY=e.clientY; });
@@ -1428,7 +1557,14 @@ function setupControls() {
   addEventListener('pagehide', releaseAllControls);
   document.addEventListener('visibilitychange', () => { if (document.hidden) releaseAllControls(); });
   document.addEventListener('contextmenu', releaseAllControls);
-  addEventListener('keydown', event => { if (event.code === 'Escape') releaseAllControls(); });
+  addEventListener('keydown', event => {
+    if (event.code === 'Escape') {
+      if (ui.updatesModal?.classList.contains('open')) closeUpdates();
+      else if (ui.rankingModal?.classList.contains('open')) closeRanking();
+      else if (ui.math?.classList.contains('open')) closeMath();
+      releaseAllControls();
+    }
+  });
 }
 
 function getAudioContext() {
@@ -1489,12 +1625,10 @@ ui.playerName.addEventListener('input', () => {
 });
 ui.rankingButton.addEventListener('click', openRanking);
 ui.subjectRankingButton.addEventListener('click', openRanking);
+ui.updatesBook.addEventListener('click', openUpdates);
+ui.updatesContinue.addEventListener('click', closeUpdates);
+ui.updatesModal.addEventListener('click', event => { if (event.target === ui.updatesModal) closeUpdates(); });
 ui.closeRanking.addEventListener('click', closeRanking);
-ui.rankingModal.addEventListener('click', event => { if (event.target === ui.rankingModal) closeRanking(); });
-initCaderno({
-  onOpen: () => { modalOpen = true; stopMovement(); },
-  onClose: () => { modalOpen = false; stopMovement(); }
-});
 ui.notebook.addEventListener('click', () => abrirCaderno(currentSubject));
 ui.interact.addEventListener('click', openMath);
 ui.closeMath.addEventListener('click', closeMath);
@@ -1514,5 +1648,30 @@ addEventListener('orientationchange', () => setTimeout(() => {
 document.addEventListener('pointerdown', unlockAudio, { once: true, capture: true });
 document.addEventListener('touchend', unlockAudio, { once: true, capture: true, passive: true });
 
-restorePlayer(); init3D(); setupControls(); updateHUD();
-if (import.meta.env.PROD && 'serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
+renderUpdates(); restorePlayer(); init3D(); setupControls(); updateHUD();
+
+async function syncServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+
+  try {
+    if (!import.meta.env.PROD) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map(registration => registration.unregister()));
+
+      if ('caches' in window) {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames
+          .filter(name => name.startsWith('aventura-elementais-'))
+          .map(name => caches.delete(name)));
+      }
+      return;
+    }
+
+    const registration = await navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' });
+    await registration.update();
+  } catch (error) {
+    console.warn('Não foi possível atualizar o cache do jogo.', error);
+  }
+}
+
+addEventListener('load', syncServiceWorker);
