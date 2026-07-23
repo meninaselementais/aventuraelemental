@@ -11,8 +11,8 @@ let sceneRef = null;
 let localId = '';
 let connected = false;
 let lastSentAt = 0;
-let avatarTemplate = null;
-let walkClip = null;
+const avatarTemplates = { fogo: null, terra: null };
+const walkClips = { fogo: null, terra: null };
 
 function createNameLabel(name) {
   const canvas = document.createElement('canvas');
@@ -48,21 +48,26 @@ function normalizeAvatar(model) {
 }
 
 function addAvatarVisual(group, record = null) {
-  if (avatarTemplate) {
-    const model = SkeletonUtils.clone(avatarTemplate);
+  const key = record?.character === 'terra' ? 'terra' : 'fogo';
+  const template = avatarTemplates[key] || avatarTemplates.fogo || avatarTemplates.terra;
+  const clip = walkClips[key] || walkClips.fogo || walkClips.terra;
+
+  if (template) {
+    const model = SkeletonUtils.clone(template);
     normalizeAvatar(model);
-    if (record && walkClip) {
+    if (record && clip) {
       record.mixer = new THREE.AnimationMixer(model);
-      record.walkAction = record.mixer.clipAction(walkClip.clone());
+      record.walkAction = record.mixer.clipAction(clip.clone());
       record.walkAction.play();
       record.mixer.timeScale = 0;
     }
     group.add(model);
     return;
   }
+  const bodyColor = key === 'terra' ? 0x388e3c : 0x7b4fd0;
   const body = new THREE.Mesh(
     new THREE.CapsuleGeometry(.28, .72, 4, 8),
-    new THREE.MeshStandardMaterial({ color: 0x7b4fd0, roughness: .82, emissive: 0x180c35, emissiveIntensity: .25 })
+    new THREE.MeshStandardMaterial({ color: bodyColor, roughness: .82, emissive: 0x180c35, emissiveIntensity: .25 })
   );
   body.position.y = .65;
   body.castShadow = true;
@@ -127,6 +132,12 @@ function applySnapshot(players, snapshotSelfId = '') {
       target.object.userData.nameLabel = createNameLabel(player.name);
       target.object.add(target.object.userData.nameLabel);
     }
+    if (target.character !== player.character) {
+      target.character = player.character;
+      target.object.clear();
+      addAvatarVisual(target.object, target);
+      target.object.add(target.object.userData.nameLabel);
+    }
     Object.assign(target, player);
     remotePlayers.set(player.id, target);
   }
@@ -135,14 +146,17 @@ function applySnapshot(players, snapshotSelfId = '') {
 
 export function initMultiplayer(scene, onStatus = () => {}) {
   sceneRef = scene;
-  new FBXLoader().load('/assets/elemental-walking.fbx', fbx => {
-    avatarTemplate = fbx;
-    walkClip = fbx.animations?.[0] || null;
+  const fbxLoader = new FBXLoader();
+  fbxLoader.load('/assets/elemental-walking.fbx', fbx => {
+    avatarTemplates.fogo = fbx;
+    walkClips.fogo = fbx.animations?.[0] || null;
     upgradeAvatars();
-  }, undefined, () => new GLTFLoader().load('/assets/elemental-character.glb', gltf => {
-    avatarTemplate = gltf.scene;
+  });
+  fbxLoader.load('/assets/terra/terra-walking.fbx', fbx => {
+    avatarTemplates.terra = fbx;
+    walkClips.terra = fbx.animations?.[0] || null;
     upgradeAvatars();
-  }));
+  });
   const configured = import.meta.env.VITE_MULTIPLAYER_URL;
   const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
   const fallback = `${protocol}://${location.host}/multiplayer`;
@@ -168,7 +182,7 @@ export function initMultiplayer(scene, onStatus = () => {}) {
   }
 }
 
-export function updateMultiplayer(player, playerName, roomNumber, rotation, now = performance.now(), dt = 0) {
+export function updateMultiplayer(player, playerName, roomNumber, rotation, now = performance.now(), dt = 0, character = 'fogo') {
   for (const remote of remotePlayers.values()) {
     if (remote.mixer) {
       remote.mixer.timeScale = remote.moving ? 1 : 0;
@@ -179,6 +193,7 @@ export function updateMultiplayer(player, playerName, roomNumber, rotation, now 
   lastSentAt = now;
   socket.send(JSON.stringify({
     type: 'state', name: playerName || 'Jogador', room: roomNumber,
-    x: player.position.x, y: player.position.y, z: player.position.z, rotation
+    x: player.position.x, y: player.position.y, z: player.position.z, rotation,
+    character: character || 'fogo'
   }));
 }

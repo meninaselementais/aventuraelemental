@@ -2,11 +2,11 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import './style.css?v=alpha-1.20';
+import './style.css?v=alpha-1.21';
 import { SUBJECTS, getQuestion, normalizeAnswer } from './questions.js';
 import { initCaderno, abrirCaderno } from './notebook.js';
 import { initMultiplayer, updateMultiplayer } from './multiplayer.js';
-import { GAME_RELEASE } from './updates.js?v=alpha-1.20';
+import { GAME_RELEASE } from './updates.js?v=alpha-1.21';
 
 const $ = (selector) => document.querySelector(selector);
 const ui = {
@@ -26,10 +26,11 @@ const ui = {
   jump: $('#jump-button'), slowStep: $('#slow-step-button'), run: $('#run-button'), notebook: $('#notebook-button'),
   gameVersion: $('#game-version'), updatesBook: $('#updates-book-button'), updatesBookSummary: $('#updates-book-summary'),
   updatesModal: $('#updates-modal'), updatesVersion: $('#updates-version'), updatesDate: $('#updates-date'),
-  updatesList: $('#updates-list'), updatesContinue: $('#updates-continue')
+  updatesList: $('#updates-list'), updatesContinue: $('#updates-continue'), characterList: $('#character-select-list')
 };
 
 let scene, camera, renderer, clock;
+let selectedCharacter = localStorage.getItem('elementais-character') || 'fogo';
 let doorGroup, doorPivot, panelGroup, doorGlow, characterGroup;
 let initialRoomTemplate = null, initialRoomLoading = null, activeRoomModel = null;
 let initialRockTexture = null;
@@ -626,6 +627,34 @@ function createElemental() {
   if (elementalLoading || elementalLoadFailed) return;
 
   elementalLoading = true;
+  if (selectedCharacter === 'terra') {
+    new FBXLoader().load(
+      '/assets/terra/terra-walking.fbx',
+      (fbx) => {
+        const loadFbxClip = (url) => new Promise((resolve) => {
+          new FBXLoader().load(url, res => resolve(res.animations?.[0] || null), undefined, () => resolve(null));
+        });
+        Promise.all([
+          loadFbxClip('/assets/terra/terra-idle.fbx'),
+          loadFbxClip('/assets/terra/terra-jumping.fbx'),
+          loadFbxClip('/assets/terra/terra-fast-run.fbx')
+        ]).then(([idleClip, jumpClip, runClip]) => {
+          const normalClip = (fbx.animations ?? [])[0] ?? null;
+          elementalAnimations = [normalClip, normalClip, idleClip, jumpClip, runClip].map((clip) => clip ? makeAnimationInPlace(clip) : null);
+          elementalTemplate = prepareElementalModel(fbx);
+          elementalLoading = false;
+          attachElementalModel(characterGroup);
+        });
+      },
+      undefined,
+      (error) => {
+        console.error('Erro ao carregar Menina de Terra.', error);
+        loadStaticElementalFallback();
+      }
+    );
+    return;
+  }
+
   new FBXLoader().load(
     '/assets/elemental-walking.fbx',
     (fbx) => {
@@ -1338,7 +1367,7 @@ function updateCharacterAnimation(dt, moving, speed = 0) {
 function updateMovement(dt) {
   // O servidor precisa saber que o jogador está presente mesmo na tela de
   // matérias, durante uma transição ou enquanto um modal está aberto.
-  updateMultiplayer(player, playerName, roomNumber, characterGroup?.rotation?.y || 0, performance.now(), dt);
+  updateMultiplayer(player, playerName, roomNumber, characterGroup?.rotation?.y || 0, performance.now(), dt, selectedCharacter);
   updateJump(dt);
   if (!started || modalOpen || changingRoom) {
     velocity.multiplyScalar(Math.exp(-10 * dt));
@@ -1399,7 +1428,7 @@ function updateMovement(dt) {
     if (!walkingAction) characterGroup.position.y = player.position.y + CHARACTER_GROUND_Y + Math.abs(Math.sin(walkTime * 2)) * .025;
   } else relaxWalk(dt);
   updateCharacterAnimation(dt, moving, velocity.length());
-  updateMultiplayer(player, playerName, roomNumber, characterGroup.rotation.y);
+  updateMultiplayer(player, playerName, roomNumber, characterGroup.rotation.y, performance.now(), dt, selectedCharacter);
   updateCamera();
   const doorPlanar = Math.hypot(player.position.x - doorGroup.position.x, player.position.z - doorGroup.position.z);
   const panelPlanar = Math.hypot(player.position.x - panelGroup.position.x, player.position.z - panelGroup.position.z);
@@ -1617,6 +1646,27 @@ ui.subjectList.addEventListener('click', event => {
   const button = event.target.closest('button[data-subject]');
   if (button) startSubject(button.dataset.subject);
 });
+
+if (ui.characterList) {
+  const charButtons = ui.characterList.querySelectorAll('button[data-character]');
+  charButtons.forEach(btn => btn.classList.toggle('selected', btn.dataset.character === selectedCharacter));
+  ui.characterList.addEventListener('click', event => {
+    const button = event.target.closest('button[data-character]');
+    if (!button) return;
+    const choice = button.dataset.character;
+    if (choice === selectedCharacter) return;
+    selectedCharacter = choice;
+    localStorage.setItem('elementais-character', selectedCharacter);
+    charButtons.forEach(btn => btn.classList.toggle('selected', btn.dataset.character === selectedCharacter));
+    if (characterGroup) {
+      scene.remove(characterGroup);
+      elementalTemplate = null;
+      elementalLoading = false;
+      elementalLoadFailed = false;
+      createElemental();
+    }
+  });
+}
 ui.playerLogin.addEventListener('click', connectPlayer);
 ui.playerName.addEventListener('keydown', event => { if (event.key === 'Enter') connectPlayer(); });
 ui.playerName.addEventListener('input', () => {
